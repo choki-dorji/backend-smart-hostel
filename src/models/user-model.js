@@ -6,6 +6,11 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, unique: true, index: true, required: true },
   password: { type: String, required: true, select: false },
   role: { type: String, enum: ['ADMIN','WARDEN','RESIDENT','MAINTENANCE'], required: true },
+
+  // ✅ Gender added
+  gender: { type: String, enum: ['male', 'female'], required: true,     lowercase: true,           // 👈 ensure stored lowercase
+ },
+
   profile: {
     phone: String,
     studentId: String,
@@ -24,4 +29,3 @@ UserSchema.methods.comparePassword = function(pw) {
 };
 
 export default mongoose.model('User', UserSchema);
-

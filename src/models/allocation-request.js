@@ -7,7 +7,9 @@ const AllocationRequestSchema = new mongoose.Schema({
   status: { type: String, enum: ['PENDING','APPROVED','DENIED'], default: 'PENDING' },
   decisionBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   decidedAt: Date,
-  assignedRoom: { type: mongoose.Schema.Types.ObjectId, ref: 'Room' }
+  currentRoom: { type: mongoose.Schema.Types.ObjectId, ref: 'Room' },
+  preferredRooms: { type: mongoose.Schema.Types.ObjectId, ref: 'Room' },
+
 }, { timestamps: true });
 
 export default mongoose.model('AllocationRequest', AllocationRequestSchema);

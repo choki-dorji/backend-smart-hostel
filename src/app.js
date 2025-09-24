@@ -3,21 +3,29 @@ import cors from 'cors';
 import morgan from 'morgan';
 
 import authRoutes from './routes/auth-routes.js';
+import blockRoutes from './routes/block-routes.js';
 import usersRoutes from './routes/user-routes.js';
 import roomsRoutes from './routes/room-routes.js';
 import allocationsRoutes from './routes/allocation-routes.js';
 import roomChangesRoutes from './routes/roomchange-routes.js';
 import ticketsRoutes from './routes/tickets-routes.js';
 import notificationsRoutes from './routes/notification-routes.js';
+import adminAllocationRouter from './routes/admin-allocate.js';
+
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+   origin: "http://localhost:8080", // your frontend
+  credentials: true,
+}));
 app.use(express.json());
 app.use(morgan('dev'));
 
 // routes
 app.use('/api/auth', authRoutes);
+app.use('/api/admin/allocation', adminAllocationRouter);
+app.use("/api/block", blockRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/rooms', roomsRoutes);
 app.use('/api/allocations', allocationsRoutes);
