@@ -6,6 +6,8 @@ import User from '../models/user-model.js';
 import { auth } from '../middleware/auth.js';
 import { requireRole } from '../middleware/require-role.js';
 import { asyncHandler } from '../utils/async-handler.js';
+import allocationRequest from '../models/allocation-request.js';
+import AppError from '../utils/app-error.js';
 
 const router = express.Router();
 
@@ -179,55 +181,74 @@ router.post(
   auth,
   requireRole('ADMIN', 'WARDEN'),
   asyncHandler(async (req, res) => {
-    const { userId, toRoomId } = req.body || {};
-    if (!userId || !toRoomId) {
-      return res.status(400).json({ error: 'userId and toRoomId are required' });
-    }
+    const { toRoomId } = req.body
+    console.log("room", toRoomId)
+    const allocation = await allocationRequest.findById(toRoomId);
+    if (!allocation) throw new AppError('Request not found', 404);
+    if (allocation.status !== 'PENDING') throw new AppError('Already decided', 409);
+    
+    
+    const preferredRoom = await Room.findById(allocation.preferredRooms);
+    if (!preferredRoom) throw new AppError('Preferred Room not found', 404);
+    if (preferredRoom.occupants.length >= preferredRoom.capacity) throw new AppError('Preferred Room is full', 409);
+    
+    let currentroom = await Room.findById(allocation.currentRoom)
 
-    const user = await User.findById(userId).select('role');
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.role !== 'RESIDENT') {
-      return res.status(400).json({ error: 'Only RESIDENT users can be moved' });
-    }
+    console.log("room", currentroom)
+    const userId = allocation.resident;
+    preferredRoom.occupants.push(userId);
+    allocation.status = "APPROVED"
 
-    const fromRoom = await Room.findOne({ occupants: userId });
-    if (!fromRoom) {
-      return res.status(400).json({ error: 'Resident is not assigned to any room' });
-    }
+    const i = currentroom.occupants.indexOf(userId);
+    currentroom.occupants = currentroom.occupants.filter(id => id.toString() !== userId);
 
-    if (fromRoom._id.toString() === toRoomId) {
-      return res.status(400).json({ error: 'Resident is already in the target room' });
-    }
+    if (i !== -1) currentroom.occupants.splice(i, 1);
 
-    const toRoom = await Room.findById(toRoomId);
-    if (!toRoom) return res.status(404).json({ error: 'Target room not found' });
-    if (!roomHasSpace(toRoom)) {
-      return res.status(400).json({ error: 'Target room is at full capacity' });
-    }
+    await preferredRoom.save();
+    await currentroom.save();
+    await allocation.save();
 
-    // Remove from old
-    fromRoom.occupants = (fromRoom.occupants || []).filter(id => id.toString() !== userId);
-    fromRoom.current_occupancy = fromRoom.occupants.length;
-    await fromRoom.save();
 
-    // Add to new
-    if (!toRoom.occupants) toRoom.occupants = [];
-    toRoom.occupants.push(userId);
-    toRoom.current_occupancy = toRoom.occupants.length;
-    await toRoom.save();
-
-    const [fromPop, toPop] = await Promise.all([
-      Room.findById(fromRoom._id)
-        .populate('block', 'name description')
-        .populate('occupants', 'name email studentId phone'),
-      Room.findById(toRoom._id)
-        .populate('block', 'name description')
-        .populate('occupants', 'name email studentId phone'),
-    ]);
-
-    res.json({ from: fromPop, to: toPop });
+    res.status(200).json({ message:"allocated successfully" });
   })
 );
+
+// POST /api/admin/allocation/reject
+// Body: { requestId: string, reason?: string }
+// Marks the allocation request as DENIED (no room changes).
+router.post(
+  '/reject',
+  auth,
+  requireRole('ADMIN', 'WARDEN'),
+  asyncHandler(async (req, res) => {
+    const { requestId } = req.body || {};
+    if (!requestId) {
+      return res.status(400).json({ error: 'requestId is required' });
+    }
+
+    // If your model file name/exports differ, adjust the import accordingly.
+    // e.g., import allocationRequest from '../models/allocation-request-model.js';
+    const ar = await allocationRequest.findById(requestId);
+    if (!ar) {
+      return res.status(404).json({ error: 'Allocation request not found' });
+    }
+
+    if (ar.status !== 'PENDING') {
+      return res.status(409).json({ error: `Request already ${ar.status}` });
+    }
+
+    // Update decision fields
+    ar.status = 'DENIED';                 // <- use 'REJECTED' here only if you changed the enum
+
+    // Optional: store admin note if you add a field in schema later (e.g., ar.decisionNote = reason)
+    // Currently your schema has no field for an admin note, so 'reason' is ignored here.
+
+    await ar.save();
+
+    return res.status(200).json({ message: 'rejected successfully' });
+  })
+);
+
 
 /**
  * GET /available
@@ -269,6 +290,17 @@ router.get(
     res.json(room || null);
   })
 );
+
+// pasrt rooms allocatoins
+router.get("/past-rooms/me", auth, requireRole('RESIDENT'), asyncHandler(async (req, res) => {
+  const allocate = await allocationRequest.find({ resident: req.user.id, status: 'APPROVED' })
+    .populate('currentRoom', 'number block floor type amenities')
+    .populate('preferredRooms', 'number block floor type')
+    .sort({ createdAt: -1 });
+  res.json(allocate);
+}
+))
+
 
 
 export default router;

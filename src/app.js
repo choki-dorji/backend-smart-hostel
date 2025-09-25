@@ -11,14 +11,16 @@ import roomChangesRoutes from './routes/roomchange-routes.js';
 import ticketsRoutes from './routes/tickets-routes.js';
 import notificationsRoutes from './routes/notification-routes.js';
 import adminAllocationRouter from './routes/admin-allocate.js';
-
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
 
-app.use(cors({
-   origin: "http://localhost:8080", // your frontend
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: "*", // allow all origins
+  })
+);
 app.use(express.json());
 app.use(morgan('dev'));
 

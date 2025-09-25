@@ -61,10 +61,12 @@ const RoomSchema = new mongoose.Schema({
     default: 'AVAILABLE'
   },
   amenities: {
-    attached_bathroom: { type: Boolean, default: false },
-    air_conditioned: { type: Boolean, default: false },
-    balcony: { type: Boolean, default: false }
-  },
+  chair: { type: Boolean, default: false },
+  table: { type: Boolean, default: false },
+  cupboard: { type: Boolean, default: false },
+  wifi: { type: Boolean, default: false },
+  fan: { type: Boolean, default: false },
+},
   current_occupancy: {
     type: Number,
     default: 0,

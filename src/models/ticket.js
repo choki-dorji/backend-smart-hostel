@@ -1,13 +1,19 @@
+// models/maintenance-ticket.js
 import mongoose from 'mongoose';
 
-const TicketSchema = new mongoose.Schema({
-  resident: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  title: { type: String, required: true },
-  description: String,
-  imageUrl: String,
-  status: { type: String, enum: ['PENDING','IN_PROGRESS','RESOLVED'], default: 'PENDING' },
-  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // MAINTENANCE
-  room: { type: mongoose.Schema.Types.ObjectId, ref: 'Room' }
-}, { timestamps: true });
+const schema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+    category: { type: String, required: true },
+    description: { type: String, required: true },
+    priority: { type: String, enum: ['low','medium','high','urgent'], default: 'medium' },
+    status: { type: String, enum: ['pending','in-progress','resolved'], default: 'pending' },
+    submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    assignedTo: { type: String },
+    roomNumber: { type: String },
+    imageUrl: { type: String }, // <-- file URL/path (not binary)
+  },
+  { timestamps: true }
+);
 
-export default mongoose.model('Ticket', TicketSchema);
+export default mongoose.model('MaintenanceTicket', schema);

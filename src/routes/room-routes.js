@@ -8,7 +8,19 @@ import { asyncHandler } from '../utils/async-handler.js';
 
 const router = express.Router();
 
-// FR4 – Admin/Warden manage rooms
+/* -------------------- Amenities: normalize & whitelist -------------------- */
+function normalizeAmenities(input = {}) {
+  // Only keep these 5; default to false
+  return {
+    chair: !!input.chair,
+    table: !!input.table,
+    cupboard: !!input.cupboard,
+    wifi: !!input.wifi,
+    fan: !!input.fan,
+  };
+}
+
+/* -------------------- FR4 – Admin/Warden manage rooms -------------------- */
 
 // Create a new room
 router.post('/', auth, requireRole('ADMIN','WARDEN'), asyncHandler(async (req, res) => {
@@ -37,8 +49,14 @@ router.post('/', auth, requireRole('ADMIN','WARDEN'), asyncHandler(async (req, r
     });
   }
 
+  // Normalize amenities to the allowed set
+  const payload = {
+    ...req.body,
+    amenities: normalizeAmenities(req.body.amenities),
+  };
+
   // Create the room
-  const room = await Room.create(req.body);
+  const room = await Room.create(payload);
 
   // Populate block information in response (include type)
   const populatedRoom = await Room.findById(room._id)
@@ -220,6 +238,11 @@ router.patch('/:id', auth, requireRole('ADMIN','WARDEN'), asyncHandler(async (re
     }
   }
 
+  // Normalize amenities if provided
+  if (req.body.amenities !== undefined) {
+    req.body.amenities = normalizeAmenities(req.body.amenities);
+  }
+
   // Apply incoming fields
   room.set(req.body);
 
@@ -284,7 +307,7 @@ router.get(
 
     // pull basic fields; populate block for FE
     const rooms = await Room.find(query)
-      .select('number type floor capacity current_occupancy occupants status block')
+      .select('number type floor capacity current_occupancy occupants status block amenities')
       .populate('block', 'name description type');
 
     // keep only rooms with free slots; ignore maintenance/unavailable if you use those
@@ -318,7 +341,6 @@ router.get(
     res.json(available);
   })
 );
-
 
 // Get room occupancy statistics
 router.get('/stats/occupancy', auth, requireRole('ADMIN','WARDEN'), asyncHandler(async (req, res) => {
