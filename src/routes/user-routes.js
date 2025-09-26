@@ -67,6 +67,20 @@ router.get(
   })
 );
 
+router.get(
+  '/maintenance',    
+  auth,
+  requireRole('ADMIN', 'WARDEN', 'MAINTENANCE'),
+  asyncHandler(async (req, res) => {
+    const staff = await User.find({ role: 'MAINTENANCE' }) // Fixed: added filter
+      .select('name email role') // Select relevant fields
+      .sort({ name: 1 })
+      .lean();
+    
+    res.json(staff);
+  })
+);
+
 /**
  * GET /api/users/:id
  */

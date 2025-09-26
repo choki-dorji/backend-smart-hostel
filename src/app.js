@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-
+import path from 'path';
+import fs from 'fs';
 import authRoutes from './routes/auth-routes.js';
 import blockRoutes from './routes/block-routes.js';
 import usersRoutes from './routes/user-routes.js';
@@ -16,6 +17,12 @@ dotenv.config();
 
 const app = express();
 
+fs.mkdirSync('uploads/tickets', { recursive: true });
+
+// Parse JSON/urlencoded for non-multipart routes
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
 app.use(
   cors({
     origin: "*", // allow all origins
@@ -23,6 +30,7 @@ app.use(
 );
 app.use(express.json());
 app.use(morgan('dev'));
+app.use('/uploads', express.static(path.resolve('uploads')));
 
 // routes
 app.use('/api/auth', authRoutes);
