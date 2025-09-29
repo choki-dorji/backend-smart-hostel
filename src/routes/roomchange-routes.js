@@ -6,6 +6,7 @@ import { auth } from '../middleware/auth.js';
 import { requireRole } from '../middleware/require-role.js';
 import { asyncHandler } from '../utils/async-handler.js';
 import AppError from '../utils/app-error.js';
+import allocationRequest from '../models/allocation-request.js';
 
 const router = express.Router();
 
@@ -76,5 +77,24 @@ router.post('/:id/decision', auth, requireRole('WARDEN','ADMIN'), asyncHandler(a
 
   res.json(doc);
 }));
+
+router.get('/totals', 
+  auth, 
+  requireRole('WARDEN','ADMIN'), 
+  asyncHandler(async (req, res) => {
+  const totalRequests = await allocationRequest.countDocuments();
+  const pendingRequests = await allocationRequest.countDocuments({ status: 'PENDING' });
+  res.json({ totalRequests, pendingRequests });
+}))
+
+
+router.get('/total-request-me/:id', 
+  auth,
+  requireRole('RESIDENT'),
+  asyncHandler(async (req, res) => {
+  const totalRequests = await allocationRequest.countDocuments({resident : req.params.id})
+  const pendingRequests = await allocationRequest.countDocuments({ status: 'PENDING' });
+  res.json({ totalRequests, pendingRequests });
+}))
 
 export default router;

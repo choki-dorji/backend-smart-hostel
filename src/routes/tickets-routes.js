@@ -113,29 +113,7 @@ router.get('/all', auth, requireRole('ADMIN', 'WARDEN'), async (req, res) => {
   }
 });
 
-// assigned to me - FIXED
-router.get(
-  '/assigned-to-me',
-  auth,
-  requireRole('MAINTENANCE'),
-  async (req, res) => {
-    try {
-      const tickets = await MaintenanceTicket.find({ 
-        assignedTo: req.user.id 
-      })
-      .populate('submittedBy', 'name email')
-      .populate('assignedTo', 'name email') // ✅ Add this (though it will be current user)
-      .populate('roomNumber', 'number block')
-      .sort({ createdAt: -1 })
-      .lean();
 
-      res.json(tickets);
-    } catch (error) {
-      console.error('Fetch assigned tickets error:', error);
-      res.status(400).json({ error: error.message || 'Failed to fetch tickets' });
-    }
-  }
-);
 
 // Add these routes after your existing GET routes
 
@@ -345,13 +323,41 @@ router.get(
       .sort({ createdAt: -1 })
       .lean();
 
-      res.json(tickets);
+      const urgent = await MaintenanceTicket.countDocuments({assignedTo: req.user.id, priority: "urgent"})
+      const completed = await MaintenanceTicket.countDocuments({assignedTo: req.user.id, status: "resolved"})
+      const pending = await MaintenanceTicket.countDocuments({assignedTo: req.user.id, status: "pending"})
+
+      res.json({ticket: tickets, total: tickets.length, urgent: urgent, resolved: completed, pending:pending});
     } catch (error) {
       console.error('Fetch assigned tickets error:', error);
       res.status(400).json({ error: error.message || 'Failed to fetch tickets' });
     }
   }
 );
+//get total maintenenec requeest
+router.get('/totals', 
+  auth, 
+  requireRole('ADMIN', 'WARDEN'), 
+  async (req, res) => {
+  try{
+    const all = await MaintenanceTicket.countDocuments()
+    return res.json({totalCount: all});
+  }catch(e){
+    res.status(400).json({ error: e.message || 'Failed to fetch tickets' });
+  }
+});
+router.get('/total-me/:id', 
+  auth, 
+  requireRole('RESIDENT'), 
+  async (req, res) => {
+  try{
+    const all = await MaintenanceTicket.countDocuments({submittedBy : req.params.id})
+    return res.json({totalCount: all});
+  }catch(e){
+    res.status(400).json({ error: e.message || 'Failed to fetch tickets' });
+  }
+});
+
 
 
 

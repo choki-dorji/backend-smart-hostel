@@ -81,6 +81,21 @@ router.get(
   })
 );
 
+router.get('/total-user', 
+  auth, 
+  requireRole('ADMIN', 'WARDEN'), 
+  async (req, res) => {
+  try{
+    const allwarden = await User.countDocuments({role: "WARDEN"})
+    const allresident = await User.countDocuments({role: "RESIDENT"})
+    const allmaintenence = await User.countDocuments({role: "MAINTENANCE"})
+
+    return res.json({warden: allwarden, resident: allresident, maintenence: allmaintenence});
+  }catch(e){
+    res.status(400).json({ error: e.message || 'Failed to fetch tickets' });
+  }
+});
+
 /**
  * GET /api/users/:id
  */
@@ -96,6 +111,8 @@ router.get(
     res.json(user);
   })
 );
+
+
 
 /**
  * POST /api/users
@@ -143,7 +160,7 @@ router.post(
 router.patch(
   '/:id',
   auth,
-  requireRole('ADMIN'),
+  requireRole('ADMIN', "WARDEN", "MAINTENANCE", "RESIDENT"),
   asyncHandler(async (req, res) => {
     const { name, email, role, gender, profile, password } = req.body || {};
     const user = await User.findById(req.params.id);
@@ -209,5 +226,8 @@ router.delete(
     res.status(204).send();
   })
 );
+
+
+
 
 export default router;
