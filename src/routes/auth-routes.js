@@ -74,11 +74,10 @@ router.post('/register', loginValidator,
 router.get("/me", auth, async (req, res) => {
   try {
     // look up the user in DB if you want fullx  info
-    const user = await User.findById(req.user.id).select("_id name email role gender");
+    const user = await User.findById(req.user.id).select("_id name email role gender profile phone");
     if (!user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    console.log(user);
     res.json({ user });
   } catch (e) {
     res.status(500).json({ message: "Something went wrong" });

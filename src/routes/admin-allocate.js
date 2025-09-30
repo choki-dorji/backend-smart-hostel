@@ -182,7 +182,6 @@ router.post(
   requireRole('ADMIN', 'WARDEN'),
   asyncHandler(async (req, res) => {
     const { toRoomId } = req.body
-    console.log("room", toRoomId)
     const allocation = await allocationRequest.findById(toRoomId);
     if (!allocation) throw new AppError('Request not found', 404);
     if (allocation.status !== 'PENDING') throw new AppError('Already decided', 409);
@@ -194,7 +193,6 @@ router.post(
     
     let currentroom = await Room.findById(allocation.currentRoom)
 
-    console.log("room", currentroom)
     const userId = allocation.resident;
     preferredRoom.occupants.push(userId);
     allocation.status = "APPROVED"

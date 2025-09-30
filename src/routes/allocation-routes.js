@@ -1,7 +1,6 @@
 import express from 'express';
 import AllocationRequest from '../models/allocation-request.js';
 import Room from '../models/room-model.js';
-import Notification from '../models/notification.js';
 import { auth } from '../middleware/auth.js';
 import { requireRole } from '../middleware/require-role.js';
 import { asyncHandler } from '../utils/async-handler.js';

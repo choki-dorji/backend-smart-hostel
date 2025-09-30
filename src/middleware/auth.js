@@ -11,7 +11,6 @@ export const auth = (req, res, next) => {
     token = hdr.slice(7);
   }
 
-  console.log("Token:", token);
 
   // 2. If not found, try from cookies
   if (!token && req.cookies?.token) {

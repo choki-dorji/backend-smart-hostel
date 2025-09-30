@@ -1,30 +1,48 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
-const UserSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, unique: true, index: true, required: true },
-  password: { type: String, required: true, select: false },
-  role: { type: String, enum: ['ADMIN','WARDEN','RESIDENT','MAINTENANCE'], required: true },
+const ProfileSchema = new mongoose.Schema(
+  {
+    studentId: { type: String, default: '' },
+    avatarUrl: { type: String, default: '' },
+  },
+  { _id: false }
+);
 
-  // ✅ Gender added
-  gender: { type: String, enum: ['male', 'female'], required: true,     lowercase: true,           // 👈 ensure stored lowercase
- },
+const UserSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, unique: true, index: true, required: true },
+    password: { type: String, required: true, select: false },
+    role: {
+      type: String,
+      enum: ['ADMIN', 'WARDEN', 'RESIDENT', 'MAINTENANCE'],
+      required: true,
+    },
 
-  profile: {
-    phone: String,
-    studentId: String,
-    avatarUrl: String
-  }
-}, { timestamps: true });
+    gender: {
+      type: String,
+      enum: ['male', 'female'],
+      required: true,
+      lowercase: true,
+    },
 
-UserSchema.pre('save', async function(next) {
+    // 👇 now an object with defaults
+    profile: { type: ProfileSchema, default: {} },
+
+    // phone numbers often have leading + / 0; store as string
+    phone: { type: String, default: '' },
+  },
+  { timestamps: true, versionKey: false }
+);
+
+UserSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-UserSchema.methods.comparePassword = function(pw) {
+UserSchema.methods.comparePassword = function (pw) {
   return bcrypt.compare(pw, this.password);
 };
 

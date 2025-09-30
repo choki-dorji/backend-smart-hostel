@@ -1,11 +1,67 @@
 import express from 'express';
 import User from '../models/user-model.js';
 import Room from '../models/room-model.js';
+import fs from 'fs';
+import multer from 'multer';
+import path from 'path';
 import { auth } from '../middleware/auth.js';
 import { requireRole } from '../middleware/require-role.js';
 import { asyncHandler } from '../utils/async-handler.js';
 
 const router = express.Router();
+
+
+const AVATAR_DIR = 'uploads/avatars';
+
+// make sure the folder exists
+fs.mkdirSync(AVATAR_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, AVATAR_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const name = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+    cb(null, name);
+  },
+});
+
+function fileFilter(req, file, cb) {
+  if (/^image\/(png|jpe?g|webp|gif)$/.test(file.mimetype)) cb(null, true);
+  else cb(new Error('Only images (PNG/JPG/WebP/GIF) are allowed'));
+}
+
+const uploadAvatar = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 3 * 1024 * 1024 }, // 3MB
+});
+
+/* ---------- NEW: upload endpoint ---------- */
+// POST /api/users/:id/avatar   (form-data: avatar=<file>)
+router.post(
+  '/:id/avatar',
+  auth,
+  requireRole('ADMIN', 'WARDEN', 'MAINTENANCE', 'RESIDENT'),
+  uploadAvatar.single('avatar'),
+  asyncHandler(async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // save relative URL so it works behind proxies / different hosts
+    const url = `/${AVATAR_DIR}/${req.file.filename}`;
+
+    user.profile = user.profile || {};
+    user.profile.avatarUrl = url;
+
+    await user.save();
+
+    // return the saved path
+    res.json({ url });
+  })
+);
+
 
 /**
  * GET /api/users
@@ -162,7 +218,7 @@ router.patch(
   auth,
   requireRole('ADMIN', "WARDEN", "MAINTENANCE", "RESIDENT"),
   asyncHandler(async (req, res) => {
-    const { name, email, role, gender, profile, password } = req.body || {};
+    const { name, email, role, gender, profile, password, phone } = req.body || {};
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -179,6 +235,7 @@ router.patch(
     if (role != null) user.role = String(role).toUpperCase();
     if (gender != null) user.gender = String(gender).toLowerCase();
     if (profile != null) user.profile = { ...(user.profile || {}), ...profile };
+    if (phone != null)  user.phone = phone
 
     // Optional: allow password change
     if (password) {
